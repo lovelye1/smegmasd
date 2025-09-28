@@ -14,12 +14,30 @@ local LastplayerPos,StuckTime = Vector3.zero,0
 local PlayerGui = Players.LocalPlayer.PlayerGui
 local OldName,OldTitle
 
+-- UI Load Detection and Auto-Rejoin System
+local UI_LOAD_TIMEOUT = 30 -- seconds to wait for UI to load
+local AUTO_REJOIN_INTERVAL = 300 -- 5 minutes in seconds
+local lastRejoinTime = tick()
+local uiLoaded = false
+local rejoinEnabled = false
+local loadAttempts = 0
+local maxLoadAttempts = 3
+
 --Tables
 local Settings = {
     AutoFarm={Enabled=true,Delay=2,Distance=6,UseSkills=true,RaidFarm=false},
     Dungeon={Enabled=true,EnabledBest=true,Name="",Diffculty="",Mode="Normal",RaidEnabled=false,RaidName="",Tier="1"},
     AutoSell = {Enabled = false,Raritys = {},ItemTypes = {}};
-    Misc={AutoRetry=false,AutoReturnLobby=true,GetGreggCoin=false,NameHide=false,RejoinIfStuck=true,RejoinStuckDelay=30},
+    Misc={
+        AutoRetry=false,
+        AutoReturnLobby=true,
+        GetGreggCoin=false,
+        NameHide=false,
+        RejoinIfStuck=true,
+        RejoinStuckDelay=30,
+        AutoRejoin=false, -- NEW: Toggle for periodic rejoin
+        RejoinOnUIFail=true -- NEW: Rejoin if UI fails to load
+    },
     DebugMode=false,
 }
 local DungeonLevels = {
@@ -72,6 +90,7 @@ function Functions:GetInventoryItems()
     end
     return tbl
 end
+
 function Functions:DoSkills(RepeatCount)
     for i, v in pairs(game:GetService("Players").LocalPlayer.Backpack:GetChildren()) do
         for i = 0,RepeatCount do
@@ -117,6 +136,7 @@ function Functions:Teleport(Cframe)
         bodyPosition:Destroy()
     end
 end
+
 function Functions:GetEnemys()
     if not workspace:FindFirstChild("dungeon") then 
         return workspace:FindFirstChild("enemies"):GetChildren()
@@ -128,6 +148,7 @@ function Functions:GetEnemys()
     end
     return nil
 end
+
 function Functions:GetClosestEnemy()
     if not Character:FindFirstChild("HumanoidRootPart") then return end
     if Functions:GetEnemys() == nil then return end
@@ -151,6 +172,7 @@ function Functions:GetClosestEnemy()
 
     return closestEnemy
 end
+
 function Functions:GetBestDungeon()
     local highestLevelDungeon = 0
     for i, v in pairs(DungeonLevels) do
@@ -173,6 +195,36 @@ function Functions:GetBestDungeon()
     end
 end
 
+-- NEW: Function to check if UI loaded properly
+function Functions:IsUILoaded()
+    if not Library or not Window then return false end
+    
+    local success, result = pcall(function()
+        return Window.Enabled and Library.Flags ~= nil
+    end)
+    
+    return success and result
+end
+
+-- NEW: Function to rejoin game
+function Functions:RejoinGame()
+    if Library and Library.Notify then
+        Library:Notify({
+            Title = "Rejoining Game",
+            Text = "UI failed to load or auto-rejoin triggered",
+            Duration = 3
+        })
+    end
+    
+    task.wait(2)
+    
+    if queue_on_teleport then
+        queue_on_teleport('loadstring(game:HttpGet("https://raw.githubusercontent.com/lovelye1/smegmasd/refs/heads/main/SIGM"))()')
+    end
+    
+    game:GetService("TeleportService"):Teleport(2414851778, Players.LocalPlayer)
+end
+
 --Grab Codes
 if getupvalue ~= nil then
     repeat task.wait() until game:GetService("ReplicatedStorage"):FindFirstChild("Utility") and game:GetService("ReplicatedStorage").Utility:FindFirstChild("BridgeNet2") and game:GetService("ReplicatedStorage").Utility.BridgeNet2:FindFirstChild("Client") and game:GetService("ReplicatedStorage").Utility.BridgeNet2.Client:FindFirstChild("ClientIdentifiers")
@@ -193,10 +245,53 @@ for i=0,5 do task.wait(.2)
     end
 end
 
---Librarys
-local Library = loadstring(game:HttpGet("https://gist.githubusercontent.com/VertigoCool99/282c9e98325f6b79299c800df74b2849/raw/d9efe72dc43a11b5237a43e2de71b7038e8bb37b/library.lua"))()
+-- Robust library loading with retry mechanism
+local Library
+local function loadLibrarySafely()
+    while loadAttempts < maxLoadAttempts do
+        local success, result = pcall(function()
+            return loadstring(game:HttpGet("https://gist.githubusercontent.com/VertigoCool99/282c9e98325f6b79299c800df74b2849/raw/d9efe72dc43a11b5237a43e2de71b7038e8bb37b/library.lua"))()
+        end)
+        
+        if success and result then
+            return result
+        else
+            loadAttempts = loadAttempts + 1
+            warn("Library load attempt " .. loadAttempts .. " failed, retrying...")
+            task.wait(2)
+        end
+    end
+    return nil
+end
 
-local Window = Library:CreateWindow({Title=" Dungeon Quest",TweenTime=.15,Center=true})
+-- Load library with error handling
+Library = loadLibrarySafely()
+
+if not Library then
+    -- If library still fails to load, rejoin immediately
+    game:GetService("TeleportService"):Teleport(2414851778, Players.LocalPlayer)
+    return
+end
+
+-- Create window with error handling
+local Window
+local success, err = pcall(function()
+    Window = Library:CreateWindow({Title=" Dungeon Quest",TweenTime=.15,Center=true})
+    
+    if not Window then
+        error("Window creation failed")
+    end
+    
+    return Window
+end)
+
+if not success then
+    warn("UI Creation Failed: " .. tostring(err))
+    if Settings.Misc.RejoinOnUIFail then
+        Functions:RejoinGame()
+    end
+    return
+end
    
 local FarmingTab = Window:AddTab("Farming")
 local MiscTab = Window:AddTab("Misc")
@@ -324,6 +419,21 @@ local RejoinStuckDelaySlider = RejoinStuckGroup:AddSlider("RejoinStuckDelaySlide
 RejoinStuckDelaySlider:AddTooltip("Time Is In Seconds")
 RejoinStuckDelaySlider:OnChanged(function(Value)
     Settings.Misc.RejoinStuckDelay = Value
+end)
+
+-- NEW: Auto Rejoin Toggle
+local AutoRejoinToggle = RejoinStuckGroup:AddToggle("AutoRejoinToggle", {
+    Text = "Auto Rejoin (5min)", 
+    Default = false, 
+    Risky = false
+})
+AutoRejoinToggle:AddTooltip("Automatically rejoins game every 5 minutes")
+AutoRejoinToggle:OnChanged(function(value)
+    rejoinEnabled = value
+    Settings.Misc.AutoRejoin = value
+    if value then
+        lastRejoinTime = tick()
+    end
 end)
 --Rejoin Stuck End
 
@@ -505,20 +615,84 @@ setupRetryVoteDetection()
 
 --Connections
 
+-- UI Load Monitoring
+task.spawn(function()
+    local uiLoadStart = tick()
+    
+    while tick() - uiLoadStart < UI_LOAD_TIMEOUT do
+        task.wait(1)
+        
+        if Functions:IsUILoaded() then
+            uiLoaded = true
+            Library:Notify({
+                Title = "UI Loaded",
+                Text = "Interface loaded successfully!",
+                Duration = 3
+            })
+            break
+        end
+    end
+    
+    if not uiLoaded and Settings.Misc.RejoinOnUIFail then
+        Library:Notify({
+            Title = "UI Load Failed",
+            Text = "Rejoining game...",
+            Duration = 3
+        })
+        Functions:RejoinGame()
+    end
+end)
+
+-- Periodic Auto-Rejoin System (every 5 minutes)
+task.spawn(function()
+    while true do
+        task.wait(1)
+        
+        if rejoinEnabled and tick() - lastRejoinTime >= AUTO_REJOIN_INTERVAL then
+            lastRejoinTime = tick()
+            Functions:RejoinGame()
+        end
+    end
+end)
+
 task.spawn(function()
     while true do task.wait(1)
         if Settings.Misc.RejoinIfStuck == true then
             if LastplayerPos and Character and (LastplayerPos - Character:GetPivot().p).Magnitude < 1 then
                 StuckTime = StuckTime + 1
             elseif StuckTime >= Settings.Misc.RejoinStuckDelay then
-                game:GetService("TeleportService"):Teleport(2414851778,game.Players.LocalPlayer)
+                Functions:RejoinGame()
             else
                 StuckTime = 0
             end
         end
+        
+        -- Additional UI health check
+        if not Functions:IsUILoaded() and uiLoaded and Settings.Misc.RejoinOnUIFail then
+            Library:Notify({
+                Title = "UI Error",
+                Text = "UI became unresponsive, rejoining...",
+                Duration = 3
+            })
+            task.wait(2)
+            Functions:RejoinGame()
+        end
     end
 end)
 
+-- Connection to handle unexpected UI failures
+game:GetService("CoreGui").ChildRemoved:Connect(function(child)
+    if (child.Name == "Library" or child.Name == "Dungeon Quest") and Settings.Misc.RejoinOnUIFail then
+        Library:Notify({
+            Title = "UI Closed",
+            Text = "User interface was closed unexpectedly",
+            Duration = 3
+        })
+        
+        task.wait(2)
+        Functions:RejoinGame()
+    end
+end)
 
 task.spawn(function()
     while true do task.wait()
