@@ -705,3 +705,31 @@ Functions:GetBestDungeon()
 AutoCreateDungeonNameDrop:SetValue(BestDungeon)
 AutoCreateDungeonDiffcultyDrop:SetValue(BestDifficulty)
 OldName,OldTitle = Players.LocalPlayer.PlayerGui.HUD.Main.PlayerStatus.PlayerStatus.PlayerName.Text,Character.Head.playerNameplate.Title.Text
+
+-- Simple Auto Rejoin Script
+--[[ 
+    CONFIGURATION
+    Change the number below to the desired time in seconds before rejoining.
+    For example:
+    60 = 1 minute
+    300 = 5 minutes
+    1800 = 30 minutes
+]]
+local timeBeforeRejoin = 300 -- ⚙️ Time in seconds (default is 5 minutes)
+
+-- Services
+local TeleportService = game:GetService("TeleportService")
+local Players = game:GetService("Players")
+
+-- Player Object
+local localPlayer = Players.LocalPlayer
+
+-- Script Logic
+print("Auto-rejoin script initiated. You will rejoin in " .. timeBeforeRejoin .. " seconds.")
+
+-- Wait for the specified amount of time
+wait(timeBeforeRejoin)
+
+-- Teleport the player back to the current game
+print("Time is up! Rejoining the game now...")
+TeleportService:Teleport(game.PlaceId, localPlayer)
