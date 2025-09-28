@@ -16,10 +16,10 @@ local OldName,OldTitle
 
 --Tables
 local Settings = {
-    AutoFarm={Enabled=false,Delay=2,Distance=6,UseSkills=false,RaidFarm=false},
-    Dungeon={Enabled=false,EnabledBest=false,Name="",Diffculty="",Mode="Normal",RaidEnabled=false,RaidName="",Tier="1"},
+    AutoFarm={Enabled=true,Delay=2,Distance=6,UseSkills=true,RaidFarm=false},
+    Dungeon={Enabled=true,EnabledBest=true,Name="",Diffculty="",Mode="Normal",RaidEnabled=false,RaidName="",Tier="1"},
     AutoSell = {Enabled = false,Raritys = {},ItemTypes = {}};
-    Misc={AutoRetry=false,AutoReturnLobby=false,GetGreggCoin=false,NameHide=false,RejoinIfStuck=false,RejoinStuckDelay=120},
+    Misc={AutoRetry=false,AutoReturnLobby=true,GetGreggCoin=false,NameHide=false,RejoinIfStuck=true,RejoinStuckDelay=30},
     DebugMode=false,
 }
 local DungeonLevels = {
