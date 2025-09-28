@@ -589,13 +589,14 @@ task.spawn(function()
                                 ["maxPlayers"] = 40
                             }}},[2] = RemoteCodes["PartySystem"]}}
             game:GetService("ReplicatedStorage"):WaitForChild("dataRemoteEvent"):FireServer(unpack(RaidArgs))
-        elseif Settings.Dungeon.EnabledBest == true then
+       -- This is the NEW, FIXED code
+       elseif Settings.Dungeon.EnabledBest == true then
             local DunArgs = {[1] = {[1] = {[1] = "\1",[2] = {["\3"] = "PlaySolo",["partyData"] = {
-                ["difficulty"] = BestDifficulty,
-                ["mode"] = "Normal",
-                ["dungeonName"] = BestDungeon,
-                ["tier"] = 1,
-            }}},[2] = RemoteCodes["PartySystem"]}}
+                                ["difficulty"] = BestDifficulty,
+                                ["mode"] = Settings.Dungeon.Mode, -- FIXED: Now uses your selection
+                                ["dungeonName"] = BestDungeon,
+                                ["tier"] = 1,
+                            }}},[2] = RemoteCodes["PartySystem"]}}
             game:GetService("ReplicatedStorage"):WaitForChild("dataRemoteEvent"):FireServer(unpack(DunArgs))
         end
         if not workspace:FindFirstChild("CharacterSelectScene") and Settings.AutoFarm.Enabled == true and Character == Players.LocalPlayer.Character and Character:FindFirstChild("HumanoidRootPart") then
