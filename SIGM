@@ -282,7 +282,8 @@ AutoSellEnabledToggle:AddTooltip("This Will Sell All Selected Raritys!")
 AutoSellEnabledToggle:OnChanged(function(value)
     Settings.AutoSell.Enabled = value
 end)
-local AutoSellItemTypeDrop = AutoSellGroup:AddDropdown("AutoCreateDungeonTierDrop",{Text = "Item Type", AllowNull = false,Values = {"weapon","ability","ring","helmet","chest"},Default={""},Multi = true,})
+-- NEW CODE (FIXED)
+local AutoSellItemTypeDrop = AutoSellGroup:AddDropdown("AutoSellItemTypeDrop",{Text = "Item Type", AllowNull = false,Values = {"weapon","ability","ring","helmet","chest"},Default={""},Multi = true,})
 AutoSellItemTypeDrop:OnChanged(function(Value)
     table.clear(Settings.AutoSell.ItemTypes)
     for i, v in pairs(Value) do
@@ -291,8 +292,10 @@ AutoSellItemTypeDrop:OnChanged(function(Value)
         end
     end
 end)
-local AutoSellRarirtyDrop = AutoSellGroup:AddDropdown("AutoCreateDungeonTierDrop",{Text = "Raritys", AllowNull = false,Values = {"Ultimate","Legendary","Epic","Rare","Uncommon","Common"},Default={""},Multi = true,})
-AutoSellRarirtyDrop:OnChanged(function(Value)
+
+-- I also fixed a typo in the variable name from "Rarirty" to "Rarity" for clarity
+local AutoSellRarityDrop = AutoSellGroup:AddDropdown("AutoSellRarityDrop",{Text = "Raritys", AllowNull = false,Values = {"Ultimate","Legendary","Epic","Rare","Uncommon","Common"},Default={""},Multi = true,})
+AutoSellRarityDrop:OnChanged(function(Value)
     table.clear(Settings.AutoSell.Raritys)
     for i, v in pairs(Value) do
         if v == true then
